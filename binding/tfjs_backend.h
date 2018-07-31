@@ -30,7 +30,10 @@ class TFJSBackend {
  public:
   // Creates, initializes, and returns a TFJSBackend instance. If initialization
   // fails, a nullptr is returned.
-  static TFJSBackend* Create(napi_env env);
+  // static TFJSBackend* Create(napi_env env);
+
+  TFJSBackend(napi_env env);
+  ~TFJSBackend();
 
   // Creates a new Tensor with given shape and data and returns an ID that
   // refernces the new Tensor.
@@ -60,8 +63,8 @@ class TFJSBackend {
                        napi_value num_output_values);
 
  private:
-  TFJSBackend(napi_env env);
-  ~TFJSBackend();
+  // TFJSBackend(napi_env env);
+  // ~TFJSBackend();
 
   int32_t InsertHandle(TFE_TensorHandle* tfe_handle);
 

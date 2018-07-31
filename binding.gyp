@@ -3,6 +3,7 @@
   'variables' : {
     'tensorflow_include_dir' : '<(module_root_dir)/deps/tensorflow/include',
     'tensorflow_lib_dir' : '<(module_root_dir)/deps/tensorflow/lib',
+    # 'tensorflow_lib_dir' : '-L/deps/tensorflow/lib',
     'tensorflow_headers' : [
       '<@(tensorflow_include_dir)/tensorflow/c/c_api.h',
       '<@(tensorflow_include_dir)/tensorflow/c/eager/c_api.h',
@@ -21,26 +22,32 @@
         'OS=="linux"', {
           'libraries' : [
             '-Wl,-rpath,<@(tensorflow_lib_dir)',
+            # '-Wl,-rpath,<(module_root_dir)/deps/tensorflow/lib',
+            # '-L/deps/tensorflow/lib',
+            # '-L/deps/tensorflow/lib',
             '-ltensorflow',
+            # '-Wl,-rpath,-L/deps/tensorflow/lib',
           ],
           'library_dirs' : ['<(tensorflow_lib_dir)'],
+          # 'library_dirs' : ['-L/deps/tensorflow/lib'],
+          # 'library_dirs' : ['./deps/tensorflow/lib'],
           'variables': {
             'tensorflow-library-target': 'linux-cpu'
           }
         }
       ],
-      [
-        'OS=="mac"', {
-          'libraries' : [
-            '-Wl,-rpath,<@(tensorflow_lib_dir)',
-            '-ltensorflow',
-          ],
-          'library_dirs' : ['<(tensorflow_lib_dir)'],
-          'variables': {
-            'tensorflow-library-target': 'darwin'
-          }
-        }
-      ],
+      # [
+      #   'OS=="mac"', {
+      #     'libraries' : [
+      #       '-Wl,-rpath,<@(tensorflow_lib_dir)',
+      #       '-ltensorflow',
+      #     ],
+      #     'library_dirs' : ['<(tensorflow_lib_dir)'],
+      #     'variables': {
+      #       'tensorflow-library-target': 'darwin'
+      #     }
+      #   }
+      # ],
     ],
     'actions': [
       {
@@ -49,7 +56,7 @@
           '<(module_root_dir)/scripts/download-libtensorflow.sh',
         ],
         'outputs': [
-          '<(PRODUCT_DIR)/libtensorflow.so',
+          '<(module_root_dir)/libtensorflow.so',
         ],
         'action': [
           'sh',

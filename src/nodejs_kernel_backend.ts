@@ -240,6 +240,16 @@ export class NodeJSKernelBackend implements KernelBackend {
     return this.executeSingleOutput('Add', opAttrs, [a, b]);
   }
 
+  select(condition: Tensor, a: Tensor, b: Tensor): Tensor {
+    const opAttrs = [createTypeOpAttr('T', upcastType(a.dtype, b.dtype))];
+    return this.executeSingleOutput('Select', opAttrs, [condition, a, b]);
+  }
+
+  addN<T extends Tensor>(tensors: T[]): T {
+    const opAttrs = [createTypeOpAttr('T', tensors[0].dtype)];
+    return this.executeSingleOutput('AddN', opAttrs, tensors) as T;
+  }
+
   subtract(a: Tensor, b: Tensor): Tensor {
     const opAttrs = [createTypeOpAttr('T', upcastType(a.dtype, b.dtype))];
     return this.executeSingleOutput('Sub', opAttrs, [a, b]);
@@ -342,10 +352,8 @@ export class NodeJSKernelBackend implements KernelBackend {
     return this.executeSingleOutput('LogicalOr', [], [a, b]);
   }
 
-  where(condition: Tensor, a: Tensor, b: Tensor, dtype: DataType): Tensor {
-    const opAttrs = [createTypeOpAttr('T', upcastType(a.dtype, b.dtype))];
-    // 'Select' Op is where with additional inputs.
-    return this.executeSingleOutput('Select', opAttrs, [condition, a, b]);
+  where(condition: Tensor): Tensor2D {
+    return this.executeSingleOutput('Where', [], [condition]) as Tensor2D;
   }
 
   topKValues<T extends Tensor>(x: T, k: number): Tensor1D {
@@ -354,6 +362,16 @@ export class NodeJSKernelBackend implements KernelBackend {
 
   topKIndices(x: Tensor, k: number): Tensor1D {
     throw new Error('Method not implemented.');
+  }
+
+  topK<T extends Tensor>(x: T, k: number, sorted: boolean): [T, T] {
+    const opAttrs = [
+      createTypeOpAttr('T', x.dtype),
+      createTypeOpAttr('Taxis', 'int32'),
+      {name: 'sorted', type: this.binding.TF_ATTR_BOOL, value: sorted},
+    ];
+    const kTensor = scalar(k, 'int32');
+    return this.executeSingleOutput('TopK', opAttrs, [x, kTensor]) as [T, T];
   }
 
   min(x: Tensor, axes: number[]): Tensor {
@@ -553,10 +571,10 @@ export class NodeJSKernelBackend implements KernelBackend {
   step<T extends Tensor>(x: T, alpha: number): T {
     const dtype = x.dtype;
     const nans = this.isNaN(x);
-    const stepNoNans = this.where(
+    const stepNoNans = this.select(
         this.greater(x, scalar(0, dtype)), ones(x.shape),
-        fill(x.shape, alpha, dtype), dtype);
-    return this.where(nans, x, stepNoNans, dtype) as T;
+        fill(x.shape, alpha, dtype));
+    return this.select(nans, x, stepNoNans) as T;
   }
 
   conv2d(x: Tensor4D, filter: Tensor4D, convInfo: Conv2DInfo): Tensor4D {
