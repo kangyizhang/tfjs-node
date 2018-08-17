@@ -16,7 +16,9 @@
     "test": "ts-node src/run_tests.ts",
     "coverage": "nyc ts-node src/run_tests.ts",
     "link-local": "yalc link",
-    "publish-local": "yarn prep && yarn build && yalc push"
+    "publish-local": "yarn prep && yarn build && yalc push",
+    "install": "node scripts/install.js",
+    "npm-compile": "node scripts/install.js npm"
   },
   "devDependencies": {
     "@tensorflow/tfjs-core": "~0.12.12",
@@ -30,9 +32,7 @@
     "ts-node": "~5.0.0",
     "tslint": "~5.9.1",
     "typescript": "~2.7.2",
-    "yalc": "~1.0.0-pre.21",
-    "install": "node scripts/install.js",
-    "npm-compile": "node scripts/install.js npm"
+    "yalc": "~1.0.0-pre.21"
   },
   "dependencies": {
     "adm-zip": "^0.4.11",
