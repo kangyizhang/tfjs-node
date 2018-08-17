@@ -4,7 +4,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "gypfile": true,
-  "repository": "https://github.com/tensorflow/tfjs-node.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tensorflow/tfjs-node.git"
+  },
   "scripts": {
     "prep": "cd node_modules/@tensorflow/tfjs-core && yarn && yarn build",
     "build": "tsc",
