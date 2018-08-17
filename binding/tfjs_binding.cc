@@ -126,14 +126,8 @@ static napi_value ExecuteOp(napi_env env, napi_callback_info info) {
 static napi_value InitTFNodeJSBinding(napi_env env, napi_value exports) {
   napi_status nstatus;
 
-<<<<<<< HEAD
-  // gBackend = TFJSBackend::Create(env);
-  // EnsureValueIsNotNull(env, gBackend);
-  gBackend = new TFJSBackend(env);
-=======
   gBackend = TFJSBackend::Create(env);
   ENSURE_VALUE_IS_NOT_NULL_RETVAL(env, gBackend, nullptr);
->>>>>>> upstream/master
 
   // TF version
   napi_value tf_version;

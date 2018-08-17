@@ -1,0 +1,33 @@
+[1mdiff --git a/binding/tfjs_binding.cc b/binding/tfjs_binding.cc[m
+[1mindex c667e3c..b85214b 100644[m
+[1m--- a/binding/tfjs_binding.cc[m
+[1m+++ b/binding/tfjs_binding.cc[m
+[36m@@ -126,14 +126,8 @@[m [mstatic napi_value ExecuteOp(napi_env env, napi_callback_info info) {[m
+ static napi_value InitTFNodeJSBinding(napi_env env, napi_value exports) {[m
+   napi_status nstatus;[m
+ [m
+[31m-<<<<<<< HEAD[m
+[31m-  // gBackend = TFJSBackend::Create(env);[m
+[31m-  // EnsureValueIsNotNull(env, gBackend);[m
+[31m-  gBackend = new TFJSBackend(env);[m
+[31m-=======[m
+   gBackend = TFJSBackend::Create(env);[m
+   ENSURE_VALUE_IS_NOT_NULL_RETVAL(env, gBackend, nullptr);[m
+[31m->>>>>>> upstream/master[m
+ [m
+   // TF version[m
+   napi_value tf_version;[m
+[1mdiff --git a/package.json b/package.json[m
+[1mindex 36f5d99..3236f06 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -30,7 +30,8 @@[m
+     "ts-node": "~5.0.0",[m
+     "tslint": "~5.9.1",[m
+     "typescript": "~2.7.2",[m
+[31m-    "yalc": "~1.0.0-pre.21"[m
+[32m+[m[32m    "yalc": "~1.0.0-pre.21",[m
+[32m+[m[32m    "install": "node scripts/install.js"[m
+   },[m
+   "dependencies": {[m
+     "adm-zip": "^0.4.11",[m
