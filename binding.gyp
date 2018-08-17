@@ -22,7 +22,7 @@
       '<@(tensorflow_include_dir)/tensorflow/c/c_api.h',
       '<@(tensorflow_include_dir)/tensorflow/c/eager/c_api.h',
     ],
-    'tensorflow-library-action': 'symlink'
+    'tensorflow-library-action': 'move'
   },
   'targets' : [{
     'target_name' : 'tfjs_binding',
@@ -41,7 +41,7 @@
           ],
           'library_dirs' : ['<(PRODUCT_DIR)'],
           'variables': {
-            'tensorflow-library-target': 'linux-cpu',
+            'tensorflow-library-target': 'linux-gpu',
           },
           'actions': [
             {
@@ -71,7 +71,7 @@
           ],
           'library_dirs' : ['<(PRODUCT_DIR)'],
           'variables': {
-            'tensorflow-library-target': 'darwin'
+            'tensorflow-library-target': 'unsupported'
           },
           'actions': [
             {
