@@ -41,7 +41,7 @@
           ],
           'library_dirs' : ['<(PRODUCT_DIR)'],
           'variables': {
-            'tensorflow-library-target': 'linux-gpu',
+            'tensorflow-library-target': 'linux-cpu',
           },
           'actions': [
             {
@@ -71,7 +71,7 @@
           ],
           'library_dirs' : ['<(PRODUCT_DIR)'],
           'variables': {
-            'tensorflow-library-target': 'unsupported'
+            'tensorflow-library-target': 'darwin'
           },
           'actions': [
             {
