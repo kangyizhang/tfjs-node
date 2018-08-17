@@ -1,6 +1,8 @@
-var cp = require('child_process');
+const cp = require('child_process');
+const os = require('os');
 
-if(process.argv[2] !== "compile-npm") {
+// Skip the node-gyp rebuild step when building NPM tfjs-node-gpu package.
+if(!(process.argv[2] === 'compile-npm' && os.platform() === 'linux')) {
 
   cp.exec('node-gyp rebuild', (err, stdout, stderr) => {
     if (err) {
@@ -10,8 +12,3 @@ if(process.argv[2] !== "compile-npm") {
     }
   });
 }
-
-
-// for (let j = 0; j < process.argv.length; j++) {
-//   console.log(j + ' -> ' + (process.argv[j]));
-// }
