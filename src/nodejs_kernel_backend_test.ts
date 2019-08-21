@@ -20,6 +20,7 @@ import {Tensor5D} from '@tensorflow/tfjs-core/dist/tensor';
 // tslint:disable-next-line:max-line-length
 import {expectArraysClose} from '@tensorflow/tfjs-core/dist/test_util';
 import {NodeJSKernelBackend} from './nodejs_kernel_backend';
+import {ensureTensorflowBackend, nodeBackend} from './ops/op_utils';
 
 describe('delayed upload', () => {
   it('should handle data before op execution', async () => {
@@ -64,3 +65,28 @@ describe('conv3d dilations', () => {
     }
   });
 });
+
+// describe('SavedModel', () => {
+//   it('load saved model int', async () => {
+//     ensureTensorflowBackend();
+//     const session =
+//         nodeBackend().loadSavedModel(__dirname.slice(0, -3) +
+//         'times_two_int');
+//     console.log('session', session);
+//     const input = tf.tensor1d([123], 'int32');
+//     const output =
+//         session.run([input], 'serving_default_x', 'StatefulPartitionedCall');
+//     tf.test_util.expectArraysEqual(await output.data(), [246]);
+//   });
+
+//   it('load saved model float', async () => {
+//     ensureTensorflowBackend();
+//     const session = nodeBackend().loadSavedModel(
+//         __dirname.slice(0, -3) + 'times_three_float');
+//     console.log('session', session);
+//     const input = tf.tensor1d([123.4], 'float32');
+//     const output =
+//         session.run([input], 'serving_default_x', 'StatefulPartitionedCall');
+//     tf.test_util.expectArraysClose(await output.data(), [370.2]);
+//   });
+// });

@@ -35,12 +35,49 @@ type TensorInfo = {
   id: number
 };
 
+export class TFSavedModel {
+  private readonly id: number;
+  private readonly backend: NodeJSKernelBackend;
+  private deleted: boolean;
+
+  constructor(id: number, backend: NodeJSKernelBackend) {
+    this.id = id;
+    this.backend = backend;
+    this.deleted = false;
+  }
+
+  /**
+   * Executes a TensorFlow SavedModel.
+   * @param inputTensors The array contains input tensors.
+   * @param inputOpName The input op name in the graph.
+   * @param outputOpName The output op name in the graph.
+   * @return A resulting Tensor from saved model execution.
+   */
+  run(inputTensors: Array<Tensor<Rank>>, inputOpName: string[],
+      outputOpName: string[]): Array<Tensor<Rank>> {
+    if (this.deleted) {
+      throw new Error('This SavedModel has been deleted!');
+    }
+
+    return this.backend.runSavedModel(
+        this.id, inputTensors, inputOpName, outputOpName);
+  }
+
+  delete() {
+    if (!this.deleted) {
+      this.deleted = true;
+      this.backend.deleteSavedModel(this.id);
+    }
+  }
+}
+
 interface DataId {}
 
 export class NodeJSKernelBackend extends KernelBackend {
   binding: TFJSBinding;
   isGPUPackage: boolean;
   private tensorMap = new WeakMap<DataId, TensorInfo>();
+  private sessionMap = new WeakMap<DataId, TFSavedModel>();
 
   constructor(binding: TFJSBinding, packageName: string) {
     super();
@@ -1852,6 +1889,30 @@ export class NodeJSKernelBackend extends KernelBackend {
 
   // ~ TensorBoard-related (tfjs-node-specific) backend kernels.
   // ------------------------------------------------------------
+
+  loadSavedModel(path: string) {
+    const newId = {};
+    const id = this.binding.loadSavedModel(path);
+    const session = new TFSavedModel(id, this);
+    this.sessionMap.set(newId, session);
+    return session;
+  }
+
+  runSavedModel(
+      sessionId: number, inputTensors: Tensor[], inputOpNames: string[],
+      outputOpNames: string[]): Tensor[] {
+    // const inputArgs = [scalar(path, 'string')];
+
+    const outputMetadata = this.binding.runSavedModel(
+        sessionId, this.getInputTensorIds(inputTensors), inputOpNames.join(),
+        outputOpNames.join());
+    // console.log('lalalalala', this.binding.tensorDataSync(id));
+    return outputMetadata.map(m => this.createOutputTensor(m));
+  }
+
+  deleteSavedModel(savedModelId: number): void {
+    this.binding.deleteSavedModel(savedModelId);
+  }
 
   memory() {
     // Due to automatic garbage collection, the numbers are unreliable.

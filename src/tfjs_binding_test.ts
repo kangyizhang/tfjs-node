@@ -78,6 +78,11 @@ describe('tensor management', () => {
 
     binding.deleteTensor(id);
   });
+  // fit('Creates a tensor', () => {
+  //   const values = new Int32Array([1]);
+  //   const id = binding.createTensor([1], binding.TF_INT32, values);
+  //   console.log('got id:::', id);
+  // });
   it('throws exception when shape does not match data', () => {
     expect(() => {
       binding.createTensor([2], binding.TF_INT32, new Int32Array([1, 2, 3]));
