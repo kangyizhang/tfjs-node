@@ -131,8 +131,7 @@ static napi_value ExecuteOp(napi_env env, napi_callback_info info) {
   return gBackend->ExecuteOp(env, args[0], args[1], args[2], args[3]);
 }
 
-static napi_value LoadSessionFromSavedModel(napi_env env,
-                                            napi_callback_info info) {
+static napi_value LoadSavedModel(napi_env env, napi_callback_info info) {
   napi_status nstatus;
 
   // Load saved model takes 1 params: export_dir:
@@ -143,20 +142,20 @@ static napi_value LoadSessionFromSavedModel(napi_env env,
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   if (argc < 1) {
-    NAPI_THROW_ERROR(
-        env, "Invalid number of args passed to LoadSessionFromSavedModel()");
+    NAPI_THROW_ERROR(env, "Invalid number of args passed to LoadSavedModel()");
     return nullptr;
   }
 
   ENSURE_VALUE_IS_STRING_RETVAL(env, args[0], nullptr);
 
-  return gBackend->LoadSessionFromSavedModel(env, args[0]);
+  return gBackend->LoadSavedModel(env, args[0]);
 }
 
-static napi_value RunSession(napi_env env, napi_callback_info info) {
+static napi_value RunSavedModel(napi_env env, napi_callback_info info) {
   napi_status nstatus;
 
-  // Load saved model takes 4 params: session_id, tensor_id, input_op_name, output_op_name:
+  // Load saved model takes 4 params: saved_model_id, tensor_id, input_op_name,
+  // output_op_name:
   size_t argc = 4;
   napi_value args[4];
   napi_value js_this;
@@ -164,8 +163,7 @@ static napi_value RunSession(napi_env env, napi_callback_info info) {
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   if (argc < 2) {
-    NAPI_THROW_ERROR(
-        env, "Invalid number of args passed to LoadSessionFromSavedModel()");
+    NAPI_THROW_ERROR(env, "Invalid number of args passed to RunSavedModel()");
     return nullptr;
   }
 
@@ -174,13 +172,13 @@ static napi_value RunSession(napi_env env, napi_callback_info info) {
   ENSURE_VALUE_IS_STRING_RETVAL(env, args[2], nullptr);
   ENSURE_VALUE_IS_STRING_RETVAL(env, args[3], nullptr);
 
-  return gBackend->RunSession(env, args[0], args[1], args[2], args[3]);
+  return gBackend->RunSavedModel(env, args[0], args[1], args[2], args[3]);
 }
 
-static napi_value DeleteSession(napi_env env, napi_callback_info info) {
+static napi_value DeleteSavedModel(napi_env env, napi_callback_info info) {
   napi_status nstatus;
 
-  // Delete session takes 1 param: session ID;
+  // Delete SavedModel takes 1 param: savedModel ID;
   size_t argc = 1;
   napi_value args[1];
   napi_value js_this;
@@ -188,13 +186,14 @@ static napi_value DeleteSession(napi_env env, napi_callback_info info) {
   ENSURE_NAPI_OK_RETVAL(env, nstatus, js_this);
 
   if (argc < 1) {
-    NAPI_THROW_ERROR(env, "Invalid number of args passed to deleteSession()");
+    NAPI_THROW_ERROR(env,
+                     "Invalid number of args passed to deleteSavedModel()");
     return js_this;
   }
 
   ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[0], js_this);
 
-  gBackend->DeleteSession(env, args[0]);
+  gBackend->DeleteSavedModel(env, args[0]);
   return js_this;
 }
 
@@ -219,12 +218,12 @@ static napi_value InitTFNodeJSBinding(napi_env env, napi_value exports) {
        napi_default, nullptr},
       {"executeOp", nullptr, ExecuteOp, nullptr, nullptr, nullptr, napi_default,
        nullptr},
-      {"loadSessionFromSavedModel", nullptr, LoadSessionFromSavedModel, nullptr,
-       nullptr, nullptr, napi_default, nullptr},
-      {"runSession", nullptr, RunSession, nullptr,
-       nullptr, nullptr, napi_default, nullptr},
-      {"deleteSession", nullptr, DeleteSession, nullptr,
-       nullptr, nullptr, napi_default, nullptr},
+      {"loadSavedModel", nullptr, LoadSavedModel, nullptr, nullptr, nullptr,
+       napi_default, nullptr},
+      {"runSavedModel", nullptr, RunSavedModel, nullptr, nullptr, nullptr,
+       napi_default, nullptr},
+      {"deleteSavedModel", nullptr, DeleteSavedModel, nullptr, nullptr, nullptr,
+       napi_default, nullptr},
       {"TF_Version", nullptr, nullptr, nullptr, nullptr, tf_version,
        napi_default, nullptr},
   };

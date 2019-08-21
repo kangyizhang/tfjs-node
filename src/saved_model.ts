@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import {Tensor3D, Tensor4D, tidy, util} from '@tensorflow/tfjs-core';
+import {TFSavedModel} from './nodejs_kernel_backend';
 import {ensureTensorflowBackend, nodeBackend} from './ops/op_utils';
 
 /**
@@ -26,7 +26,7 @@ import {ensureTensorflowBackend, nodeBackend} from './ops/op_utils';
 /**
  * @doc {heading: 'SavedModel', namespace: 'node'}
  */
-export function loadSavedModel(path: string): SavedModelSession {
+export function loadSavedModel(path: string): TFSavedModel {
   ensureTensorflowBackend();
   return nodeBackend().loadSavedModel(path);
 }

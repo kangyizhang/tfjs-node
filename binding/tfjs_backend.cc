@@ -700,7 +700,7 @@ void AssignOpAttr(napi_env env, TFE_Op *tfe_op, napi_value attr_value) {
 }
 
 TFJSBackend::TFJSBackend(napi_env env)
-    : next_tensor_id_(0), next_session_id_(0) {
+    : next_tensor_id_(0), next_savedmodel_id_(0) {
   TF_AutoStatus tf_status;
   TFE_ContextOptions *tfe_options = TFE_NewContextOptions();
   tfe_context_ = TFE_NewContext(tfe_options, tf_status.status);
@@ -748,7 +748,7 @@ TFJSBackend::~TFJSBackend() {
   for (auto &kv : tfe_handle_map_) {
     TFE_DeleteTensorHandle(kv.second);
   }
-  for (auto &kv : tf_session_map_) {
+  for (auto &kv : tf_savedmodel_map_) {
     TF_AutoStatus tf_status;
     TF_DeleteSession(kv.second.first, tf_status.status);
   }
@@ -764,9 +764,10 @@ int32_t TFJSBackend::InsertHandle(TFE_TensorHandle *tfe_handle) {
       .first->first;
 }
 
-int32_t TFJSBackend::InsertSession(TF_Session *tf_session, TF_Graph *tf_graph) {
-  return tf_session_map_
-      .insert(std::make_pair(next_session_id_++,
+int32_t TFJSBackend::InsertSavedModel(TF_Session *tf_session,
+                                      TF_Graph *tf_graph) {
+  return tf_savedmodel_map_
+      .insert(std::make_pair(next_savedmodel_id_++,
                              std::make_pair(tf_session, tf_graph)))
       .first->first;
 }
@@ -971,8 +972,8 @@ napi_value TFJSBackend::ExecuteOp(napi_env env, napi_value op_name_value,
   return output_tensor_infos;
 }
 
-napi_value TFJSBackend::LoadSessionFromSavedModel(napi_env env,
-                                                  napi_value export_dir_value) {
+napi_value TFJSBackend::LoadSavedModel(napi_env env,
+                                       napi_value export_dir_value) {
   TF_SessionOptions *session_options = TF_NewSessionOptions();
 
   TF_Buffer *run_options = TF_NewBufferFromString("", 0);
@@ -1013,8 +1014,8 @@ napi_value TFJSBackend::LoadSessionFromSavedModel(napi_env env,
   }
 
   napi_value output_session_id;
-  nstatus =
-      napi_create_int32(env, InsertSession(session, graph), &output_session_id);
+  nstatus = napi_create_int32(env, InsertSavedModel(session, graph),
+                              &output_session_id);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
   return output_session_id;
 
@@ -1163,23 +1164,37 @@ napi_value TFJSBackend::LoadSessionFromSavedModel(napi_env env,
   // return nullptr;  // output_session_id;
 }
 
-napi_value TFJSBackend::RunSession(napi_env env, napi_value session_id_value,
-                                   napi_value input_tensor_ids,
-                                   napi_value input_op_name_value,
-                                   napi_value output_op_name_value) {
+napi_value TFJSBackend::RunSavedModel(napi_env env,
+                                      napi_value savedmodel_id_value,
+                                      napi_value input_tensor_ids,
+                                      napi_value input_op_names_value,
+                                      napi_value output_op_names_value) {
   napi_status nstatus;
   TF_AutoStatus tf_status;
 
-  int32_t session_id;
-  nstatus = napi_get_value_int32(env, session_id_value, &session_id);
+  int32_t savedmodel_id;
+  nstatus = napi_get_value_int32(env, savedmodel_id_value, &savedmodel_id);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
-  auto session_entry = tf_session_map_.find(session_id);
-  if (session_entry == tf_session_map_.end()) {
-    NAPI_THROW_ERROR(env, "Session ID not referenced (session_id: %d)",
-                     session_id);
+  auto savedmodel_entry = tf_savedmodel_map_.find(savedmodel_id);
+  if (savedmodel_entry == tf_savedmodel_map_.end()) {
+    NAPI_THROW_ERROR(env, "SavedModel ID not referenced (savedmodel_id: %d)",
+                     savedmodel_id);
     return nullptr;
   }
+
+  std::string input_op_names;
+  nstatus = GetStringParam(env, input_op_names_value, input_op_names);
+  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+  std::string output_op_names;
+  nstatus = GetStringParam(env, output_op_names_value, output_op_names);
+  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+
+  std::vector<std::string> input_op_name_array = split(input_op_names);
+  std::vector<std::string> output_op_name_array = split(output_op_names);
+
+  std::vector<TF_Output> inputs;
+  std::vector<TF_Output> outputs;
 
   uint32_t num_input_ids;
   nstatus = napi_get_array_length(env, input_tensor_ids, &num_input_ids);
@@ -1203,9 +1218,6 @@ napi_value TFJSBackend::RunSession(napi_env env, napi_value session_id_value,
       return nullptr;
     }
 
-    // TFE_OpAddInput(tfe_op.op, tensor_entry->second, tf_status.status);
-    // ENSURE_TF_OK_RETVAL(env, tf_status, nullptr);
-
     TF_Tensor *inputTensor =
         TFE_TensorHandleResolve(tensor_entry->second, tf_status.status);
 
@@ -1220,58 +1232,44 @@ napi_value TFJSBackend::RunSession(napi_env env, napi_value session_id_value,
 
     TF_Tensor *const *inputValues = &inputTensor;
 
+    // Add input tensor
     input_values.push_back(inputTensor);
+
+    TF_Operation *input_op = TF_GraphOperationByName(
+        savedmodel_entry->second.second, input_op_name_array[i].c_str());
+    if (input_op == nullptr) {
+      NAPI_THROW_ERROR(env, "Input op name can not be found in the graph.");
+      return nullptr;
+    }
+    TF_Output in = {input_op, 0};
+    inputs.push_back(in);
   }
 
-  std::string input_op_name;
-  nstatus = GetStringParam(env, input_op_name_value, input_op_name);
-  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
-  std::string output_op_name;
-  nstatus = GetStringParam(env, output_op_name_value, output_op_name);
-  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+  for (uint32_t i = 0; i < output_op_name_array.size(); i++) {
+    TF_Operation *output_op = TF_GraphOperationByName(
+        savedmodel_entry->second.second, output_op_name_array[i].c_str());
+    if (output_op == nullptr) {
+      NAPI_THROW_ERROR(env, "Output op name can not be found in the graph.");
+      return nullptr;
+    }
+    TF_Output out = {output_op, 0};
+    outputs.push_back(out);
+  }
 
   auto deallocator = [](void *data, size_t len, void *arg) {};
 
-  TF_Operation *input_op = TF_GraphOperationByName(session_entry->second.second,
-                                                   input_op_name.c_str());
-  if (input_op == nullptr) {
-    NAPI_THROW_ERROR(env, "Input op name can not be found in the graph.");
-    return nullptr;
-  }
-
   NapiAutoRef *auto_ref = new NapiAutoRef();
-
-  TF_Output inputs = {input_op, 0};
 
   int64_t in_dims[] = {1};
   float values[1] = {1.5};
   const int num_bytes_in = 1 * sizeof(float);
-  // TF_Tensor* input = TF_NewTensor(TF_FLOAT, in_dims, 1, values, num_bytes_in,
-  // deallocator, 0); TF_Tensor* input=Int32Tensor({6});
-  //  TF_Tensor* input = TF_NewTensor(TF_FLOAT, in_dims, 1, &values,
-  //  num_bytes_in, DeallocTensor, auto_ref);
-  //   char encoded[] = {
-  //     0,   0, 0, 0, 0, 0, 0, 0,  // array[uint64] offsets
-  //     1,                         // varint encoded string length
-  //     'A',
-  // };
-  // auto deallocator = [](void* data, size_t len, void* arg) {};
-  //  TF_Tensor* input = TF_NewTensor(TF_STRING, nullptr, 0, &encoded[0],
-  //                                     sizeof(encoded), deallocator, nullptr);
-  // input_values.push_back(inputTensor);
-  TF_Operation *output_op = TF_GraphOperationByName(
-      session_entry->second.second, output_op_name.c_str());
-  if (output_op == nullptr) {
-    NAPI_THROW_ERROR(env, "Output op name can not be found in the graph.");
-    return nullptr;
-  }
 
-  TF_Output outputs = {output_op, 0};
-  std::vector<TF_Tensor *> output_values(1, nullptr);
+  std::vector<TF_Tensor *> output_values(num_input_ids, nullptr);
 
-  TF_SessionRun(session_entry->second.first, nullptr, &inputs, &input_values[0],
-                1, &outputs, &output_values[0], 1, nullptr, 0, nullptr,
-                tf_status.status);
+  TF_SessionRun(savedmodel_entry->second.first, nullptr, inputs.data(),
+                input_values.data(), num_input_ids, outputs.data(),
+                output_values.data(), output_op_name_array.size(), nullptr, 0,
+                nullptr, tf_status.status);
 
   if (TF_GetCode(tf_status.status) != TF_OK) {
     printf("run session status not ok");
@@ -1280,9 +1278,6 @@ napi_value TFJSBackend::RunSession(napi_env env, napi_value session_id_value,
                      TF_Message(tf_status.status));
     return nullptr;
   }
-
-  TFE_TensorHandle *tfe_handle =
-      TFE_NewTensorHandle(output_values[0], tf_status.status);
 
   if (TF_GetCode(tf_status.status) != TF_OK) {
     printf("create tfe handle from tf_tensor status not ok");
@@ -1297,13 +1292,14 @@ napi_value TFJSBackend::RunSession(napi_env env, napi_value session_id_value,
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   /////////////////////////////////////////////////////////////////////
-  for (int32_t i = 0; i < 1 /*num_outputs*/; i++) {
+  for (int32_t i = 0; i < output_op_name_array.size(); i++) {
     // Output tensor info object:
     napi_value tensor_info_value;
     nstatus = napi_create_object(env, &tensor_info_value);
     ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
-    // TFE_TensorHandle *handle = tfe_handle;
+    TFE_TensorHandle *tfe_handle =
+        TFE_NewTensorHandle(output_values[i], tf_status.status);
 
     // Output tensor ID:
     napi_value output_tensor_id_value;
@@ -1339,26 +1335,28 @@ napi_value TFJSBackend::RunSession(napi_env env, napi_value session_id_value,
   return output_tensor_infos;
 }
 
-void TFJSBackend::DeleteSession(napi_env env, napi_value session_id_value) {
-  int32_t session_id;
-  ENSURE_NAPI_OK(env, napi_get_value_int32(env, session_id_value, &session_id));
+void TFJSBackend::DeleteSavedModel(napi_env env,
+                                   napi_value savedmodel_id_value) {
+  int32_t savedmodel_id;
+  ENSURE_NAPI_OK(
+      env, napi_get_value_int32(env, savedmodel_id_value, &savedmodel_id));
 
-  auto session_entry = tf_session_map_.find(session_id);
-  if (session_entry == tf_session_map_.end()) {
-    NAPI_THROW_ERROR(env,
-                     "Delete called on a Session not referenced (session_id: %d)",
-                     session_id);
+  auto savedmodel_entry = tf_savedmodel_map_.find(savedmodel_id);
+  if (savedmodel_entry == tf_savedmodel_map_.end()) {
+    NAPI_THROW_ERROR(
+        env, "Delete called on a SavedModel not referenced (savedmodel_id: %d)",
+        savedmodel_id);
     return;
   }
 
   TF_AutoStatus tf_status;
-  TF_DeleteSession(session_entry->second.first, tf_status.status);
+  TF_DeleteSession(savedmodel_entry->second.first, tf_status.status);
   if (TF_GetCode(tf_status.status) != TF_OK) {
-    NAPI_THROW_ERROR(env, "Fail to delete session: %s",
+    NAPI_THROW_ERROR(env, "Fail to delete SavedModel: %s",
                      TF_Message(tf_status.status));
   }
-  TF_DeleteGraph(session_entry->second.second);
-  tf_session_map_.erase(session_entry);
+  TF_DeleteGraph(savedmodel_entry->second.second);
+  tf_savedmodel_map_.erase(savedmodel_entry);
 }
 
 }  // namespace tfnodejs

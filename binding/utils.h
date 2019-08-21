@@ -18,12 +18,13 @@
 #ifndef TF_NODEJS_UTILS_H_
 #define TF_NODEJS_UTILS_H_
 
+#include <memory.h>
 #include <node_api.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <string>
 #include <vector>
-#include <memory.h>
 #include "tensorflow/c/c_api.h"
 #include "tf_auto_status.h"
 
@@ -311,7 +312,7 @@ static void Int32Deallocator(void* data, size_t, void* arg) {
 }
 
 inline TF_Tensor* Int32Tensor(const int64_t* dims, int num_dims,
-                       const int32_t* values) {
+                              const int32_t* values) {
   int64_t num_values = 1;
   for (int i = 0; i < num_dims; ++i) {
     num_values *= dims[i];
@@ -346,7 +347,8 @@ static void Float32Deallocator(void* data, size_t, void* arg) {
 //     num_values *= dims[i];
 //   }
 //   TF_Tensor* t =
-//       TF_AllocateTensor(TF_FLOAT, dims, num_dims, sizeof(float32_t) * num_values);
+//       TF_AllocateTensor(TF_FLOAT, dims, num_dims, sizeof(float32_t) *
+//       num_values);
 //   memcpy(TF_TensorData(t), values, sizeof(float32_t) * num_values);
 //   return t;
 // }
@@ -364,13 +366,13 @@ static void Float32Deallocator(void* data, size_t, void* arg) {
 //                       &Float32Deallocator, nullptr);
 // }
 
-
 // All the *Helper methods are used as a workaround for the restrictions that
 // one cannot call ASSERT_* methods in non-void-returning functions (when
 // exceptions are disabled during compilation)
 inline void PlaceholderHelper(TF_Graph* graph, TF_Status* s, const char* name,
-                       TF_DataType dtype, const std::vector<int64_t>& dims,
-                       TF_Operation** op) {
+                              TF_DataType dtype,
+                              const std::vector<int64_t>& dims,
+                              TF_Operation** op) {
   TF_OperationDescription* desc = TF_NewOperation(graph, "Placeholder", name);
   TF_SetAttrType(desc, "dtype", dtype);
   if (!dims.empty()) {
@@ -379,8 +381,9 @@ inline void PlaceholderHelper(TF_Graph* graph, TF_Status* s, const char* name,
   *op = TF_FinishOperation(desc, s);
 }
 
-inline TF_Operation* Placeholder(TF_Graph* graph, TF_Status* s, const char* name,
-                          TF_DataType dtype, const std::vector<int64_t>& dims) {
+inline TF_Operation* Placeholder(TF_Graph* graph, TF_Status* s,
+                                 const char* name, TF_DataType dtype,
+                                 const std::vector<int64_t>& dims) {
   TF_Operation* op;
   PlaceholderHelper(graph, s, name, dtype, dims, &op);
   return op;
@@ -390,6 +393,18 @@ inline TF_Operation* Placeholder(TF_Graph* graph, TF_Status* s, const char* name
 //         free(data);
 // }
 
+inline std::vector<std::string> split(const std::string& str) {
+  std::vector<std::string> tokens;
+  size_t prev = 0, pos = 0;
+  do {
+    pos = str.find(',', prev);
+    if (pos == std::string::npos) pos = str.length();
+    std::string token = str.substr(prev, pos - prev);
+    if (!token.empty()) tokens.push_back(token);
+    prev = pos + 1;  // delim.length();
+  } while (pos < str.length() && prev < str.length());
+  return tokens;
+}
 
 }  // namespace tfnodejs
 

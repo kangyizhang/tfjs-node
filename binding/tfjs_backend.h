@@ -21,12 +21,12 @@
 #include <node_api.h>
 
 #include <map>
-#include <utility>
 #include <memory>
 #include <string>
+#include <utility>
 
-#include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/c_api.h"
+#include "tensorflow/c/eager/c_api.h"
 
 namespace tfnodejs {
 
@@ -65,33 +65,34 @@ class TFJSBackend {
 
   // Load a SavedModel from a path:
   // - export_dir (string)
-  napi_value LoadSessionFromSavedModel(napi_env env, napi_value export_dir);
+  napi_value LoadSavedModel(napi_env env, napi_value export_dir);
 
-  // Execute a session with the provided input/output name:
-  // - session_id (number)
+  // Execute a session from SavedModel with the provided input/output names:
+  // - saved_model_id (number)
   // - input_tensor_ids (array of input tensor IDs)
-  // - input_op_name (string)
-  // - output_op_name (string)
-  napi_value RunSession(napi_env env, napi_value session_id,
-                        napi_value input_tensor_ids, napi_value input_op_name,
-                        napi_value output_op_name);
+  // - input_op_name (array of input op names)
+  // - output_op_name (array of output op names)
+  napi_value RunSavedModel(napi_env env, napi_value saved_model_id,
+                           napi_value input_tensor_ids,
+                           napi_value input_op_names,
+                           napi_value output_op_names);
 
   // Delete the corresponding TF_Session and TF_Graph
-  // - session_id (number)
-  void DeleteSession(napi_env env, napi_value session_id);
+  // - saved_model_id (number)
+  void DeleteSavedModel(napi_env env, napi_value saved_model_id);
 
  private:
   TFJSBackend(napi_env env);
   ~TFJSBackend();
 
   int32_t InsertHandle(TFE_TensorHandle* tfe_handle);
-  int32_t InsertSession(TF_Session* tf_session, TF_Graph* tf_graph);
+  int32_t InsertSavedModel(TF_Session* tf_session, TF_Graph* tf_graph);
 
   TFE_Context* tfe_context_;
   std::map<int32_t, TFE_TensorHandle*> tfe_handle_map_;
-  std::map<int32_t, std::pair<TF_Session*, TF_Graph*>> tf_session_map_;
+  std::map<int32_t, std::pair<TF_Session*, TF_Graph*>> tf_savedmodel_map_;
   int32_t next_tensor_id_;
-  int32_t next_session_id_;
+  int32_t next_savedmodel_id_;
   std::string device_name;
 };
 

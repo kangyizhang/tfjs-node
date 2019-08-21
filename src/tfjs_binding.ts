@@ -52,15 +52,15 @@ export interface TFJSBinding {
       numOutputs: number): TensorMetadata[];
 
   // load a SavedModel from a path:
-  loadSessionFromSavedModel(exportDir: string): number;
+  loadSavedModel(exportDir: string): number;
 
   // run a SavedModel:
-  runSession(
-      sessionId: number, inputTensorIds: number[], inputOpName: string,
-      outputOpName: string): TensorMetadata[];
+  runSavedModel(
+      sessionId: number, inputTensorIds: number[], inputOpNames: string,
+      outputOpNames: string): TensorMetadata[];
 
   // delete a SavedModel:
-  deleteSession(sessionId: number): void;
+  deleteSavedModel(savedModelId: number): void;
 
   // TF Types
   TF_FLOAT: number;
